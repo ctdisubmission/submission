@@ -25,6 +25,7 @@
     <UseGlobalApplicationHostFile />
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
+    <Use64BitIISExpress />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -167,6 +168,8 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="EntityModels\ModelType.cs" />
+    <Compile Include="Models\CartonService.cs" />
+    <Compile Include="Models\ICartonService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ViewModels\RemoveEquipmentViewModel.cs" />
     <Compile Include="ViewModels\AddEquipmentViewModel.cs" />
@@ -225,9 +228,7 @@
     <Content Include="Views\Carton\AddEquipment.cshtml" />
     <Content Include="Views\Carton\ViewCartonEquipment.cshtml" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Models\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <Content Include="fonts\glyphicons-halflings-regular.woff" />
     <Content Include="fonts\glyphicons-halflings-regular.ttf" />

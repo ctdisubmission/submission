@@ -5,12 +5,24 @@ using System.Data.Entity;
 using System.Linq;
 using System.Net;
 using System.Web.Mvc;
+using CandidateProject.Models;
 
 namespace CandidateProject.Controllers
 {
     public class CartonController : Controller
     {
         private CartonContext db = new CartonContext();
+        private ICartonService cartonService;
+
+        public CartonController()
+        {
+            cartonService = new CartonService(db);
+        }
+
+        public CartonController(ICartonService cartonService)
+        {
+            this.cartonService = cartonService;
+        }
 
         // GET: Carton
         public ActionResult Index()
@@ -298,15 +310,7 @@ namespace CandidateProject.Controllers
             {
                 // DM: I typically either inject or wrap my contexts directly in a using statement where I need them, so I'll do it here for an example.
                 // I realize the db variable is available and should be used and if the team prefered that method that's not a problem for me especially in a web site where the life of a call is well defined
-                using (var context = new CartonContext())
-                {
-                    var cartonDetailToDelete = context.CartonDetails.SingleOrDefault(cd => cd.CartonId == removeEquipmentViewModel.CartonId && cd.EquipmentId == removeEquipmentViewModel.EquipmentId);
-                    if (cartonDetailToDelete != null)
-                    {
-                        context.CartonDetails.Remove(cartonDetailToDelete);
-                        context.SaveChanges();
-                    }
-                }
+                cartonService.RemoveEquipmentOnCarton(removeEquipmentViewModel);
 
             }
             return RedirectToAction("ViewCartonEquipment", new { id = removeEquipmentViewModel.CartonId });
