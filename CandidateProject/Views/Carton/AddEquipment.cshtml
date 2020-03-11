@@ -7,6 +7,21 @@
 <h2>AddEquipment</h2>
 
 <h3>@Html.DisplayFor(model => model.CartonNumber)</h3>
+
+@{ if (TempData.ContainsKey("Message"))
+    {
+        <div class="alert alert-danger text-center">@TempData["Message"]</div>
+    }
+}
+
+Your carton currently contains @Model.CurrentEquipmentCount items.
+
+@{ if (Model.CurrentEquipmentCount >= Model.MaxCurrentEquipmentCount)
+    {
+        <div class="alert alert-warning text-center">Carton is at max capicity, items can no longer be added</div>
+    }
+}
+
 <table class="table">
     <tr>
         <th>
@@ -14,7 +29,7 @@
         </th>
         <th>
             @Html.DisplayNameFor(model => model.Equipment.FirstOrDefault().SerialNumber)
-        </th>    
+        </th>
         <th></th>
     </tr>
 
@@ -28,9 +43,17 @@
                 @Html.DisplayFor(modelItem => item.SerialNumber)
             </td>
             <td>
-                @Html.ActionLink("Add", "AddEquipmentToCarton", new { cartonId = Model.CartonId, equipmentId = item.Id })
+                @{ if (Model.CurrentEquipmentCount < Model.MaxCurrentEquipmentCount)
+                    {
+                        @Html.ActionLink("Add", "AddEquipmentToCarton", new { cartonId = Model.CartonId, equipmentId = item.Id });
+                    }
+                }
             </td>
         </tr>
     }
 
 </table>
+
+<div>
+    @Html.ActionLink("Back to List", "Index")
+</div>

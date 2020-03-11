@@ -16,7 +16,7 @@
             @Html.DisplayNameFor(model => model.Equipment.FirstOrDefault().SerialNumber)
         </th>
         <th>
-        </th>        
+        </th>
     </tr>
 
     @foreach (var item in Model.Equipment)
@@ -35,3 +35,7 @@
     }
 
 </table>
+
+<div>
+    @Html.ActionLink("Back to List", "Index")
+</div>

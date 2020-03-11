@@ -16,10 +16,12 @@ namespace CandidateProject.Controllers
         public ActionResult Index()
         {
             var cartons = db.Cartons
+                .Include(c => c.CartonDetails)
                 .Select(c => new CartonViewModel()
                 {
                     Id = c.Id,
-                    CartonNumber = c.CartonNumber
+                    CartonNumber = c.CartonNumber,
+                    EquipmentCount = c.CartonDetails.Count()
                 })
                 .ToList();
 
@@ -131,11 +133,21 @@ namespace CandidateProject.Controllers
         public ActionResult DeleteConfirmed(int id)
         {
             Carton carton = db.Cartons.Find(id);
-            db.Cartons.Remove(carton);
-            db.SaveChanges();
+
+            if (carton != null)
+            {
+                // DM: this is a different pattern then is used else where (existing code uses include and where instead of Find)
+                // I believe Find can have some small performance gains due to caching so I'll leave it here but this would be 
+                // an item up for team review to determine a preferred pattern for consistency.
+                db.Entry(carton).Collection(c => c.CartonDetails).Load();
+                db.CartonDetails.RemoveRange(carton.CartonDetails);
+                db.Cartons.Remove(carton);
+                db.SaveChanges();
+            }
+
             return RedirectToAction("Index");
         }
-
+        
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -153,11 +165,13 @@ namespace CandidateProject.Controllers
             }
 
             var carton = db.Cartons
+                .Include(c => c.CartonDetails)
                 .Where(c => c.Id == id)
                 .Select(c => new CartonDetailsViewModel()
                 {
                     CartonNumber = c.CartonNumber,
-                    CartonId = c.Id
+                    CartonId = c.Id,
+                    CurrentEquipmentCount = c.CartonDetails.Count()
                 })
                 .SingleOrDefault();
 
@@ -166,8 +180,8 @@ namespace CandidateProject.Controllers
                 return HttpNotFound();
             }
 
-            var equipment = db.Equipments
-                .Where(e => !db.CartonDetails.Where(cd => cd.CartonId == id).Select(cd => cd.EquipmentId).Contains(e.Id) )
+            var availableEquipment = db.Equipments
+                .Where(e => !db.CartonDetails.Select(cd => cd.EquipmentId).Contains(e.Id))
                 .Select(e => new EquipmentViewModel()
                 {
                     Id = e.Id,
@@ -175,8 +189,8 @@ namespace CandidateProject.Controllers
                     SerialNumber = e.SerialNumber
                 })
                 .ToList();
-            
-            carton.Equipment = equipment;
+
+            carton.Equipment = availableEquipment;
             return View(carton);
         }
 
@@ -192,6 +206,14 @@ namespace CandidateProject.Controllers
                 {
                     return HttpNotFound();
                 }
+
+                if (carton.CartonDetails.Count() >= 10) // DM: hardcoded 10, would make more sense to put this in the DB as a config option of the carton, but trying to keep this to the 1 hour mark. 
+                                                        // You could then use that in the config value to set the MaxCurrentEquipmentCount I added in the CartonDetailsViewModel.
+                {
+                    TempData["Message"] = "Your equipment was not added because the carton already has the maximum amount of items.";
+                    return RedirectToAction("AddEquipment", new { id = addEquipmentViewModel.CartonId });
+                }
+
                 var equipment = db.Equipments
                     .Where(e => e.Id == addEquipmentViewModel.EquipmentId)
                     .SingleOrDefault();
@@ -199,17 +221,49 @@ namespace CandidateProject.Controllers
                 {
                     return HttpNotFound();
                 }
+
+                var assignedEquipement = db.CartonDetails
+                    .Where(cd => cd.EquipmentId == addEquipmentViewModel.EquipmentId)
+                    .SingleOrDefault();
+                if (assignedEquipement != null)
+                {
+                    TempData["Message"] = "Your equipment has already been added to another carton.";
+                    return RedirectToAction("AddEquipment", new { id = addEquipmentViewModel.CartonId });
+                }
+
                 var detail = new CartonDetail()
                 {
                     Carton = carton,
                     Equipment = equipment
                 };
+
                 carton.CartonDetails.Add(detail);
                 db.SaveChanges();
             }
             return RedirectToAction("AddEquipment", new { id = addEquipmentViewModel.CartonId });
         }
 
+        public ActionResult RemoveAllEquipmentFromCarton(int? cartonId)
+        {
+            if (cartonId == null)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            }
+
+            var carton = db.Cartons.Find(cartonId);
+
+            if (carton != null)
+            {
+                db.Entry(carton).Collection(c => c.CartonDetails).Load();
+                db.CartonDetails.RemoveRange(carton.CartonDetails);
+                db.SaveChanges();
+            }
+
+            return RedirectToAction("Index");
+        }
+
+        // DM: Looks like most of the equipment interaction are done through gets currently. Given the desired timeframe of 30-45 mins I'm not going to change these to posts and add antiforgery etc, but it is something that
+        // should be looked at
         public ActionResult ViewCartonEquipment(int? id)
         {
             if (id == null)
@@ -240,10 +294,20 @@ namespace CandidateProject.Controllers
 
         public ActionResult RemoveEquipmentOnCarton([Bind(Include = "CartonId,EquipmentId")] RemoveEquipmentViewModel removeEquipmentViewModel)
         {
-            return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
             if (ModelState.IsValid)
             {
-                //Remove code here
+                // DM: I typically either inject or wrap my contexts directly in a using statement where I need them, so I'll do it here for an example.
+                // I realize the db variable is available and should be used and if the team prefered that method that's not a problem for me especially in a web site where the life of a call is well defined
+                using (var context = new CartonContext())
+                {
+                    var cartonDetailToDelete = context.CartonDetails.SingleOrDefault(cd => cd.CartonId == removeEquipmentViewModel.CartonId && cd.EquipmentId == removeEquipmentViewModel.EquipmentId);
+                    if (cartonDetailToDelete != null)
+                    {
+                        context.CartonDetails.Remove(cartonDetailToDelete);
+                        context.SaveChanges();
+                    }
+                }
+
             }
             return RedirectToAction("ViewCartonEquipment", new { id = removeEquipmentViewModel.CartonId });
         }

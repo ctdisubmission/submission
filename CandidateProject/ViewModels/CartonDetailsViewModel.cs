@@ -9,10 +9,13 @@ namespace CandidateProject.ViewModels
     {
         public int CartonId { get; set; }
         public string CartonNumber { get; set; }
+        public int CurrentEquipmentCount { get; set; }
+        public int MaxCurrentEquipmentCount { get; }
         public IEnumerable<EquipmentViewModel> Equipment { get; set; }
         public CartonDetailsViewModel()
         {
             Equipment = new List<EquipmentViewModel>();
+            MaxCurrentEquipmentCount = 10;
         }
     }
 }
